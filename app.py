@@ -48,13 +48,13 @@ def run_shell_command(command):
         return jsonify({"error": "Task execution failed.", "details": result.stderr}), 400
 
 # Task A2: Format file using Prettier
-def format_with_prettier():
+def a2_format_markdown():
     file_path = get_abs_path("format.md")
     command = f'npx prettier@3.4.2 --write "{file_path}"'
     return run_shell_command(command)
 
 # Task A3: Count Wednesdays in a list of dates
-def count_wednesdays():
+def a3_dates():
     input_file = get_abs_path("dates.txt")
     output_file = get_abs_path("dates-wednesdays.txt")
 
@@ -84,7 +84,7 @@ def count_wednesdays():
         return jsonify({"error": "Task execution failed.", "details": str(e)}), 400
 
 # Task A4: Sort Contacts.
-def sort_contacts():
+def a4_contacts():
     input_file = get_abs_path("contacts.json")
     output_file = get_abs_path("contacts-sorted.json")
 
@@ -109,7 +109,7 @@ def sort_contacts():
         return jsonify({"error": "Task execution failed.", "details": str(e)}), 400
 
 # Task A5: Extract first line of 10 most recent log files
-def extract_recent_logs():
+def a5_logs():
     logs_dir = get_abs_path("logs")  # Directory containing log files
     output_file = get_abs_path("logs-recent.txt")
 
@@ -144,7 +144,7 @@ def extract_recent_logs():
     
 
 # Task A6: Extract H1 headers from Markdown files (Recursive Search)
-def extract_markdown_headers():
+def a6_docs():
     docs_dir = get_abs_path("docs")  # Base docs directory
     output_file = get_abs_path("docs/index.json")
 
@@ -180,7 +180,7 @@ def extract_markdown_headers():
 
 
 # Task A7: Extract senders email.
-def extract_email_sender():
+def a7_email():
     """Extracts sender's email from email.txt and writes it to email-sender.txt"""
     input_file = get_abs_path("email.txt")
     output_file = get_abs_path("email-sender.txt")
@@ -284,7 +284,7 @@ def extract_email_sender():
 
 
 # Task A10: Calculate total sales for "Gold" tickets
-def calculate_gold_ticket_sales():
+def a10_ticket_sales():
     db_path = get_abs_path("ticket-sales.db")
     output_file = get_abs_path("ticket-sales-gold.txt")
 
@@ -305,18 +305,210 @@ def calculate_gold_ticket_sales():
     except Exception as e:
         return jsonify({"error": "Task execution failed.", "details": str(e)}), 400
 
+#---------------------           ------PHASE B---------------------------------------------------
+
+# Task B1: Ensure file access is restricted to /data directory.
+def secure_path(file_path):
+    """Ensure file access is restricted to /data directory."""
+    abs_path = os.path.abspath(file_path)
+    if not abs_path.startswith(os.path.abspath(DATA_DIR)):
+        raise PermissionError("Access to files outside /data is not allowed.")
+    return abs_path
 
 
+# Task B2: Prevent file deletion in the system.
+def safe_remove(file_path):
+    """Prevent file deletion in the system."""
+    raise PermissionError("File deletion is not allowed by system policy.")
+
+# Task B3: Fetch data from an API and save it as json file
+def fetch_and_save_api_data():
+    """ Fetches data from an API and saves it to a file. """
+    api_url = "https://api.publicapis.org/entries"  # Example API
+    output_file = get_abs_path("api_response.json")
+
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()  # Raise an error for bad responses
+        data = response.json()
+
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+
+        return jsonify({"message": "API data fetched and saved successfully."}), 200
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": "Task execution failed.", "details": str(e)}), 400
+
+
+# Task B4: Clone a Git repo and make a commit
+def clone_and_commit_repo():
+    """ Clones a Git repository and makes a commit. """
+    repo_url = "https://github.com/example/repository.git"  # Replace with the actual repo URL
+    repo_dir = get_abs_path("repository")  # Clone into /data/repository
+    commit_message = "Automated commit from script"
+
+    try:
+        # Clone the repository if it doesn't exist
+        if not os.path.exists(repo_dir):
+            subprocess.run(["git", "clone", repo_url, repo_dir], check=True)
+
+        # Change directory to the cloned repo
+        os.chdir(repo_dir)
+
+        # Create a dummy file to modify (if required)
+        file_path = os.path.join(repo_dir, "new_file.txt")
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("This is a test commit.\n")
+
+        # Add, commit, and push changes
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", commit_message], check=True)
+        subprocess.run(["git", "push"], check=True)
+
+        return jsonify({"message": "Repository cloned and committed successfully."}), 200
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": "Task execution failed.", "details": str(e)}), 400
+
+
+# Task B5: Run a SQL query on a SQLite database
+def run_sql_query():
+    """ Runs a SQL query on a SQLite database and saves the result to a file. """
+    db_path = get_abs_path("database.db")  # Replace with actual database filename
+    output_file = get_abs_path("query_results.txt")
+    sql_query = "SELECT * FROM users;"  # Replace with your actual query
+
+    try:
+        # Check if the database file exists
+        if not os.path.exists(db_path):
+            return jsonify({"error": "Database file not found."}), 404
+
+        # Connect to the SQLite database and execute the query
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(sql_query)
+        results = cursor.fetchall()
+        conn.close()
+
+        # Save results to a file
+        with open(output_file, "w", encoding="utf-8") as f:
+            for row in results:
+                f.write(", ".join(map(str, row)) + "\n")
+
+        return jsonify({"message": "SQL query executed successfully.", "results": results}), 200
+    except sqlite3.Error as e:
+        return jsonify({"error": "Task execution failed.", "details": str(e)}), 400
+
+
+# Task B6: Scraping data from a website
+def scrape_website():
+    """ Scrapes titles (h1 tags) from a website and saves them to a file. """
+    url = "https://example.com"  # Replace with the actual website URL
+    output_file = get_abs_path("scraped_titles.txt")
+
+    try:
+        # Fetch website content
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an error for bad responses
+
+        # Parse HTML content
+        soup = BeautifulSoup(response.text, "html.parser")
+        titles = [h1.text.strip() for h1 in soup.find_all("h1")]  
+
+        # Save extracted titles to a file
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(titles))
+
+        return jsonify({"message": "Website scraped successfully.", "titles": titles}), 200
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": "Task execution failed.", "details": str(e)}), 400
+
+# Task B7: Compress or Resize an Image
+def compress_or_resize_image():
+    """ Compresses or resizes an image and saves it as a new file. """
+    input_image = get_abs_path("input.jpg")  # Replace with actual input image filename
+    output_image = get_abs_path("compressed.jpg")  # Output file
+    max_size = (800, 800)  # Resize dimensions (modify as needed)
+    quality = 75  # Compression quality (1-100, lower means more compression)
+
+    try:
+        # Check if the image file exists
+        if not os.path.exists(input_image):
+            return jsonify({"error": "Image file not found."}), 404
+
+        # Open the image
+        img = Image.open(input_image)
+
+        # Resize the image while maintaining aspect ratio
+        img.thumbnail(max_size)
+
+        # Save the compressed/resized image
+        img.save(output_image, "JPEG", quality=quality)
+
+        return jsonify({"message": "Image compressed and resized successfully."}), 200
+    except Exception as e:
+        return jsonify({"error": "Task execution failed.", "details": str(e)}), 400
+
+# Task B9: Convert Markdown to HTML
+def convert_markdown_to_html():
+    """ Converts Markdown content to HTML. """
+    input_file = get_abs_path("sample.md")  # Path to the Markdown file
+    output_file = get_abs_path("output.html")  # Output HTML file
+
+    try:
+        # Read the Markdown file
+        with open(input_file, "r", encoding="utf-8") as f:
+            md_content = f.read()
+
+        # Convert Markdown to HTML
+        html_content = markdown.markdown(md_content)
+
+        # Save the HTML output
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        return jsonify({"message": "Markdown converted to HTML successfully."}), 200
+    except Exception as e:
+        return jsonify({"error": "Task execution failed.", "details": str(e)}), 400
+
+# Task B10: Filter a CSV file and return JSON data
+@app.route("/filter_csv", methods=["GET"])
+def filter_csv():
+    """ Filters a CSV file based on query parameters and returns JSON data. """
+    csv_file = get_abs_path("data.csv")  # Replace with your CSV file path
+
+    try:
+        # Load the CSV into a DataFrame
+        df = pd.read_csv(csv_file)
+
+        # Get filter parameters from request
+        column = request.args.get("column")  # Column name
+        value = request.args.get("value")  # Value to filter
+
+        # Validate parameters
+        if not column or not value:
+            return jsonify({"error": "Missing required parameters: column and value."}), 400
+        
+        # Apply filter
+        if column not in df.columns:
+            return jsonify({"error": f"Column '{column}' not found in CSV."}), 400
+
+        filtered_df = df[df[column].astype(str) == value]  # Convert to string for comparison
+
+        # Convert to JSON and return
+        return jsonify(filtered_df.to_dict(orient="records")), 200
+
+    except Exception as e:
+        return jsonify({"error": "Task execution failed.", "details": str(e)}), 400
 
 # Dictionary to map task descriptions to functions
 TASKS = {
-    "format_with_prettier": format_with_prettier,
-    "count_wednesdays": count_wednesdays,
-    "sort_contacts": sort_contacts,
-    "extract_recent_logs": extract_recent_logs,
-    "extract_markdown_headers": extract_markdown_headers,
-    "extract_email_sender": extract_email_sender,
-    "calculate_gold_ticket_sales": calculate_gold_ticket_sales,
+    "format_with_prettier": a2_format_markdown,
+    "count_wednesdays": a3_dates,
+    "sort_contacts": a4_contacts,
+    "extract_recent_logs": a5_logs,
+    "extract_markdown_headers": a6_docs,
+    "extract_email_sender": a7_email,
+    "calculate_gold_ticket_sales": a10_ticket_sales,
 
 }
 
